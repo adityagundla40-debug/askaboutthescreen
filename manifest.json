@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Ask About This Screen",
+  "version": "1.0.0",
+  "description": "Capture screenshots and ask AI questions about them",
+  "permissions": [
+    "activeTab",
+    "sidePanel",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "side_panel": {
+    "default_path": "index.html"
+  },
+  "action": {
+    "default_title": "Ask About This Screen"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  }
+}
