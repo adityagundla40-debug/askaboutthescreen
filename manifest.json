@@ -6,7 +6,8 @@
   "permissions": [
     "activeTab",
     "sidePanel",
-    "tabs"
+    "tabs",
+    "tts"
   ],
   "host_permissions": [
     "<all_urls>"

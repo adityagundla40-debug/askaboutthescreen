@@ -5,8 +5,13 @@ A Chrome Extension (Manifest V3) that captures screenshots and uses Google Gemin
 ## Features
 
 - 📸 **Screen Capture**: Capture screenshots of the active tab using Chrome's native API
+- 🔄 **Multi-Tab Analysis**: Capture and analyze multiple tabs simultaneously
+- 🎤 **Voice-to-Text Input**: Speak your questions using Web Speech API with real-time transcription
+- 🔊 **Conditional Text-to-Speech**: AI responses are read aloud when using voice input
 - 🤖 **AI Analysis**: Powered by Google Gemini 2.5 Flash-Lite for fast, intelligent responses
-- 💬 **Interactive Chat**: Ask questions about captured screenshots
+- 🔍 **Cross-Tab Comparison**: Compare products, prices, specs, and reviews across multiple tabs
+- 💬 **Interactive Chat**: Ask questions about captured screenshots via text or voice
+- 🖼️ **Session Gallery**: Visual thumbnails of all captured tabs in your session
 - 🎨 **Modern UI**: Dark-themed interface built with React and Tailwind CSS
 - ⚡ **Fast Backend**: FastAPI server for efficient image processing
 
@@ -85,12 +90,48 @@ npm run build
 
 ## Usage
 
+### Single Tab Mode
 1. Click the extension icon to open the side panel
 2. Click "📸 Capture Screen" to take a screenshot of the active tab
 3. The screenshot will appear in the panel
-4. Type your question in the input field (e.g., "What's on this page?", "Summarize this content")
-5. Click "🤖 Analyze" or press Enter
-6. The AI will analyze the screenshot and provide an answer
+4. **Text Input**: Type your question in the input field
+5. **Voice Input**: Click the 🎙️ microphone button and speak your question
+   - The mic icon will pulse red while listening
+   - Your speech will be transcribed in real-time
+   - When you stop speaking, analysis will automatically begin
+6. Click "🤖 Analyze" or press Enter (or wait for auto-process after voice input)
+7. The AI will analyze the screenshot and provide an answer
+
+### Multi-Tab Mode
+1. Click the extension icon to open the side panel
+2. Switch to "Multi-Tab" mode using the toggle
+3. Navigate to different tabs and click "➕ Add Tab to Session" for each tab you want to analyze
+4. View all captured tabs in the session gallery (thumbnails with URLs)
+5. **Text or Voice**: Type or speak your question (e.g., "Compare the prices", "Which product has better reviews?")
+6. Click "🤖 Analyze All Tabs" (or wait for auto-process after voice input)
+7. The AI will analyze all screenshots together and provide a comprehensive comparison
+
+### Voice Input Features
+- **Real-time Transcription**: See your words appear as you speak
+- **Visual Feedback**: Pulsing red microphone icon indicates active listening
+- **Auto-Process**: Analysis automatically starts when you stop speaking
+- **Conditional TTS**: AI responses are automatically read aloud when using voice input
+- **Manual TTS Control**: Click 🔇 button to stop speech at any time
+- **Smart Interruption**: Starting new voice input stops any ongoing speech
+- **Hands-Free**: Perfect for multitasking or accessibility needs
+- **Language Support**: Defaults to English (en-US), configurable in code
+
+**TTS Behavior:**
+- ✅ **Voice Input** → AI response is spoken aloud
+- ❌ **Text/Keyboard Input** → AI response is silent (text only)
+- 🔇 **Stop Button** → Appears when TTS is active, click to interrupt
+
+**Multi-Tab Use Cases:**
+- Compare products across e-commerce sites
+- Analyze pricing differences
+- Compare specifications and features
+- Review sentiment analysis across multiple sources
+- Cross-reference information from different pages
 
 ## Project Structure
 
@@ -116,22 +157,29 @@ AskAboutTheScreen/
 ## API Endpoints
 
 ### POST /analyze
-Analyzes a screenshot with AI based on user prompt.
+Analyzes one or more screenshots with AI based on user prompt.
 
 **Request Body:**
 ```json
 {
-  "image": "base64_encoded_image_string",
-  "prompt": "Your question about the image"
+  "images": ["base64_encoded_image_1", "base64_encoded_image_2", "..."],
+  "prompt": "Your question about the image(s)"
 }
 ```
 
 **Response:**
 ```json
 {
-  "response": "AI generated answer"
+  "response": "AI generated answer with cross-tab analysis"
 }
 ```
+
+**System Instructions:**
+The AI is configured as a cross-tab assistant that:
+- Compares products across different tabs
+- Identifies differences and similarities
+- Provides structured comparisons
+- References specific tabs in responses
 
 ## Development
 

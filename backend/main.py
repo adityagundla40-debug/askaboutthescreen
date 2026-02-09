@@ -7,6 +7,7 @@ import os
 from PIL import Image
 from io import BytesIO
 from dotenv import load_dotenv
+from typing import List
 
 load_dotenv()
 
@@ -21,19 +22,32 @@ app.add_middleware(
 )
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel("gemini-2.5-flash-lite")
+model = genai.GenerativeModel("gemma-3-12b-it")
 
 class AnalyzeRequest(BaseModel):
-    image: str
+    images: List[str]  # List of base64 encoded images
     prompt: str
 
 @app.post("/analyze")
 async def analyze_screen(request: AnalyzeRequest):
     try:
-        image_data = base64.b64decode(request.image)
-        image = Image.open(BytesIO(image_data))
+        # Convert all base64 images to PIL Images
+        images = []
+        for img_data in request.images:
+            image_bytes = base64.b64decode(img_data)
+            image = Image.open(BytesIO(image_bytes))
+            images.append(image)
         
-        response = model.generate_content([request.prompt, image])
+        # Prepend instructions to the user prompt for Gemma models
+        enhanced_prompt = f"""You are a cross-tab assistant analyzing screenshots. Compare products, prices, specs, and reviews across images. Highlight key differences and similarities.
+
+User Question: {request.prompt}"""
+        
+        # Build content list with enhanced prompt and all images
+        content = [enhanced_prompt] + images
+        
+        # Generate response with all images
+        response = model.generate_content(content)
         
         return {"response": response.text}
     except Exception as e:
@@ -41,4 +55,4 @@ async def analyze_screen(request: AnalyzeRequest):
 
 @app.get("/")
 async def root():
-    return {"message": "Ask About This Screen API"}
+    return {"message": "Ask About This Screen API - Multi-Tab Analysis Enabled"}
