@@ -1,0 +1,306 @@
+================================================================================
+ASK ABOUT THIS SCREEN - TEST COMMANDS (NATURAL LANGUAGE EDITION)
+================================================================================
+
+This file contains all possible commands you can test with the extension.
+The AI now uses NATURAL LANGUAGE INTENT TRANSLATION to understand your commands!
+
+You can phrase commands in many different ways - the AI will translate them to JSON.
+
+================================================================================
+BROWSER ACTIONS - TAB SWITCHING (Natural Language)
+================================================================================
+
+The AI understands variations like: "switch to", "go to", "open", "navigate to"
+
+✓ "Switch to Gmail"
+✓ "Go to YouTube"
+✓ "Open the GitHub tab"
+✓ "Navigate to Facebook"
+✓ "Switch to Twitter"
+✓ "Go to Amazon"
+✓ "Open Netflix"
+✓ "Switch to the Reddit tab"
+✓ "Navigate to Stack Overflow"
+✓ "Go to LinkedIn"
+✓ "Open the first tab"
+✓ "Switch to Google Docs"
+✓ "Go to Slack"
+✓ "Open Discord"
+✓ "Navigate to Spotify"
+✓ "Switch to my email"
+✓ "Go to the tab with Python"
+✓ "Open the documentation page"
+✓ "Switch to the shopping site"
+✓ "Navigate to the news tab"
+
+================================================================================
+BROWSER ACTIONS - SEARCH (Natural Language)
+================================================================================
+
+The AI understands variations like: "search", "look for", "find", "google", "look up"
+
+✓ "Search for Python tutorials"
+✓ "Look for React hooks"
+✓ "Find machine learning courses"
+✓ "Google best laptops 2024"
+✓ "Search how to make pizza"
+✓ "Look up Chrome extensions"
+✓ "Find weather today"
+✓ "Search for restaurants near me"
+✓ "Look up JavaScript promises"
+✓ "Google best movies 2024"
+✓ "Find cheap flights"
+✓ "Search for news"
+✓ "Look up artificial intelligence"
+✓ "Google web development courses"
+✓ "Find coding bootcamps"
+✓ "Search TypeScript examples"
+✓ "Look for best practices for React"
+✓ "Find tutorials on machine learning"
+✓ "Google how to use Docker"
+✓ "Search web development tips"
+
+================================================================================
+BROWSER ACTIONS - CAPTURE (Natural Language)
+================================================================================
+
+The AI understands variations like: "capture", "screenshot", "take a picture"
+
+✓ "Capture this screen"
+✓ "Take a screenshot"
+✓ "Screenshot this page"
+✓ "Capture the current view"
+✓ "Take a picture of this screen"
+✓ "Screenshot what I'm looking at"
+✓ "Capture this"
+✓ "Take a picture"
+✓ "Screenshot the page"
+✓ "Capture what I see"
+
+================================================================================
+INVALID COMMANDS - CHATTING MODE (Should Return "Chatting mode...")
+================================================================================
+
+These are NOT browser commands - the AI will return {"action": "NONE"}
+
+✗ "Hello"
+✗ "How are you?"
+✗ "What's the weather?"
+✗ "Tell me a joke"
+✗ "Good morning"
+✗ "What time is it?"
+✗ "Who are you?"
+✗ "What can you do?"
+✗ "Help me"
+✗ "Thanks"
+
+================================================================================
+GENERAL CHAT - SCREEN ANALYSIS (AI Chat Mode Only)
+================================================================================
+
+These commands will analyze the screenshot(s) and provide answers:
+
+✓ "what's on this page?"
+✓ "describe what you see"
+✓ "what is this website about?"
+✓ "summarize this page"
+✓ "what are the main elements?"
+✓ "read the text on screen"
+✓ "what's the title of this page?"
+✓ "describe the layout"
+✓ "what colors are used?"
+✓ "what's the main content?"
+✓ "explain this page to me"
+✓ "what information is shown?"
+✓ "describe the images"
+✓ "what's in the header?"
+✓ "what's in the footer?"
+
+================================================================================
+GENERAL CHAT - MULTI-TAB COMPARISON
+================================================================================
+
+These commands work best with multiple tabs in session:
+
+✓ "compare these products"
+✓ "which one is cheaper?"
+✓ "what are the differences?"
+✓ "which has better reviews?"
+✓ "compare the prices"
+✓ "which one should I buy?"
+✓ "what are the similarities?"
+✓ "compare the features"
+✓ "which is the best deal?"
+✓ "analyze all tabs"
+✓ "what's different between these?"
+✓ "compare specifications"
+✓ "which has better ratings?"
+✓ "summarize all tabs"
+✓ "what's common across all?"
+
+================================================================================
+GENERAL CHAT - PRODUCT ANALYSIS
+================================================================================
+
+These commands analyze product pages:
+
+✓ "what's the price?"
+✓ "is this in stock?"
+✓ "what are the reviews saying?"
+✓ "what's the rating?"
+✓ "what are the specifications?"
+✓ "what colors are available?"
+✓ "what's the shipping cost?"
+✓ "what's the return policy?"
+✓ "what are the features?"
+✓ "is this a good deal?"
+✓ "what's the brand?"
+✓ "what's included in the box?"
+✓ "what are the dimensions?"
+✓ "what's the warranty?"
+✓ "are there any discounts?"
+
+================================================================================
+GENERAL CHAT - CONTENT QUESTIONS
+================================================================================
+
+These commands ask about page content:
+
+✓ "what's the main topic?"
+✓ "who wrote this article?"
+✓ "when was this published?"
+✓ "what's the conclusion?"
+✓ "what are the key points?"
+✓ "what's the author's opinion?"
+✓ "what are the pros and cons?"
+✓ "what's the recommendation?"
+✓ "what's the summary?"
+✓ "what are the steps?"
+✓ "what's the solution?"
+✓ "what's the problem?"
+✓ "what's the example?"
+✓ "what's the code doing?"
+✓ "explain this concept"
+
+================================================================================
+GENERAL CHAT - UI/UX QUESTIONS
+================================================================================
+
+These commands analyze design and layout:
+
+✓ "what buttons are visible?"
+✓ "where is the search bar?"
+✓ "what's in the navigation menu?"
+✓ "what's in the sidebar?"
+✓ "what forms are on this page?"
+✓ "what links are available?"
+✓ "what's the call to action?"
+✓ "where is the login button?"
+✓ "what's in the top menu?"
+✓ "what icons are shown?"
+✓ "what's the page structure?"
+✓ "where is the contact info?"
+✓ "what's the color scheme?"
+✓ "what fonts are used?"
+✓ "is this mobile friendly?"
+
+================================================================================
+IGNORED COMMANDS (Unclear/Useless)
+================================================================================
+
+These commands will be ignored with a helpful message:
+
+✗ "hello"
+✗ "hi there"
+✗ "how are you?"
+✗ "what's up?"
+✗ "test"
+✗ "asdf"
+✗ "123"
+✗ "random text"
+✗ "blah blah"
+✗ "nothing"
+✗ "idk"
+✗ "help"
+✗ "what can you do?"
+✗ "tell me a joke"
+✗ "sing a song"
+
+================================================================================
+VOICE INPUT EXAMPLES
+================================================================================
+
+These work great with voice input (will trigger TTS response):
+
+🎤 "switch to gmail" → Switches tab + speaks confirmation
+🎤 "search for pizza recipes" → Opens search + speaks confirmation
+🎤 "what's on this page?" → Analyzes + speaks answer
+🎤 "compare these products" → Compares + speaks analysis
+🎤 "capture this screen" → Captures + speaks confirmation
+
+================================================================================
+MULTI-TAB WORKFLOW EXAMPLES
+================================================================================
+
+1. PRODUCT COMPARISON:
+   - Add 3 product tabs to session
+   - Say: "compare the prices"
+   - Say: "which has better reviews?"
+   - Say: "which one should I buy?"
+
+2. RESEARCH WORKFLOW:
+   - Add multiple article tabs
+   - Say: "summarize all tabs"
+   - Say: "what are the key points?"
+   - Say: "what's the common theme?"
+
+3. SHOPPING WORKFLOW:
+   - Add product tabs from different sites
+   - Say: "which is the cheapest?"
+   - Say: "compare shipping costs"
+   - Say: "which has fastest delivery?"
+
+================================================================================
+TIPS FOR BEST RESULTS
+================================================================================
+
+✓ Be specific with tab names (e.g., "switch to gmail" not "switch to mail")
+✓ Use clear search queries (e.g., "search for python tutorials" not "search python")
+✓ Capture screenshots before asking analysis questions
+✓ Add multiple tabs to session for comparison questions
+✓ Use voice input for hands-free operation
+✓ Keep questions concise for faster responses
+✓ Wait for first response before asking follow-up questions
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+If commands don't work:
+1. Make sure backend is running (http://localhost:8000)
+2. Check that GEMINI_API_KEY is set in .env file
+3. Reload the extension in chrome://extensions/
+4. Check browser console for errors
+5. Try simpler commands first
+
+================================================================================
+ADVANCED COMMANDS
+================================================================================
+
+Combining actions:
+✓ "capture this and tell me what you see"
+✓ "switch to youtube and capture it"
+✓ "search for laptops and compare results"
+
+Context-aware:
+✓ "what's the price of this?" (after capturing product page)
+✓ "compare this with the previous tab"
+✓ "is this better than the other one?"
+
+================================================================================
+END OF TEST COMMANDS
+================================================================================
+
+For more information, see README.md
+For issues, visit: https://github.com/adityagundla40-debug/askaboutthescreen/issues
