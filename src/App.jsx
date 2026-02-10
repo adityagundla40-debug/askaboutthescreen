@@ -1,9 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
+import Auth from './Auth';
+import History from './History';
+import { authService, databaseService } from './appwrite';
 
 const API_URL = 'http://localhost:8000';
 
 function App() {
-  // ViewState: 'COMMAND' or 'CHAT'
+  // Authentication state
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [showHistory, setShowHistory] = useState(false);
+  
+  // ViewState: 'COMMAND', 'CHAT', or 'SETTINGS'
   const [viewState, setViewState] = useState('COMMAND');
   
   // Image management
@@ -30,6 +38,12 @@ function App() {
   const [lastCommand, setLastCommand] = useState(null);
   const [toast, setToast] = useState(null);
   
+  // Settings state
+  const [customAgentName, setCustomAgentName] = useState('assistant');
+  const [wakeWordEnabled, setWakeWordEnabled] = useState(true);
+  const [wakeWordStatus, setWakeWordStatus] = useState('stopped');
+  const [settingsInput, setSettingsInput] = useState('assistant');
+  
   // Separate recognition refs for each mode
   const commandRecognitionRef = useRef(null);
   const chatRecognitionRef = useRef(null);
@@ -38,9 +52,71 @@ function App() {
 
   // Initialize speech recognition on mount
   useEffect(() => {
+    checkAuth();
     initializeCommandRecognition();
     initializeChatRecognition();
+    loadSettings();
+    
+    // Listen for wake word status updates and keyboard shortcuts
+    const messageListener = (request, sender, sendResponse) => {
+      if (request.action === 'wakeWordStatusUpdate') {
+        setWakeWordStatus(request.status);
+        if (request.error) {
+          showToast(`Wake word error: ${request.error}`, 'error');
+        }
+      }
+      
+      // Handle keyboard shortcuts
+      if (request.action === 'keyboardShortcut') {
+        handleKeyboardShortcut(request.command);
+      }
+    };
+    
+    chrome.runtime.onMessage.addListener(messageListener);
+    
+    // Cleanup
+    return () => {
+      chrome.runtime.onMessage.removeListener(messageListener);
+    };
   }, []);
+  
+  // Check authentication status
+  const checkAuth = async () => {
+    setAuthLoading(true);
+    const result = await authService.getCurrentUser();
+    if (result.success) {
+      setUser(result.user);
+    }
+    setAuthLoading(false);
+  };
+  
+  // Handle successful authentication
+  const handleAuthSuccess = (authenticatedUser) => {
+    setUser(authenticatedUser);
+    showToast(`Welcome, ${authenticatedUser.name || authenticatedUser.email}!`, 'success');
+  };
+  
+  // Handle logout
+  const handleLogout = async () => {
+    const result = await authService.logout();
+    if (result.success) {
+      setUser(null);
+      showToast('Logged out successfully', 'success');
+    } else {
+      showToast('Failed to logout', 'error');
+    }
+  };
+  
+  // Log activity to Appwrite
+  const logActivity = async (action, data) => {
+    if (!user) return;
+    
+    try {
+      await databaseService.logActivity(user.$id, action, data);
+    } catch (error) {
+      console.error('Failed to log activity:', error);
+    }
+  };
 
   // Auto-focus chat input when switching to CHAT view
   useEffect(() => {
@@ -48,8 +124,77 @@ function App() {
       chatInputRef.current.focus();
     }
   }, [viewState]);
+  
+  // Load settings from chrome.storage
+  const loadSettings = async () => {
+    try {
+      const result = await chrome.storage.sync.get(['customAgentName', 'wakeWordEnabled']);
+      if (result.customAgentName) {
+        setCustomAgentName(result.customAgentName);
+        setSettingsInput(result.customAgentName);
+      }
+      if (result.wakeWordEnabled !== undefined) {
+        setWakeWordEnabled(result.wakeWordEnabled);
+      }
+    } catch (error) {
+      console.error('Failed to load settings:', error);
+    }
+  };
+  
+  // Save settings to chrome.storage
+  const saveSettings = async () => {
+    try {
+      const newAgentName = settingsInput.trim() || 'assistant';
+      
+      await chrome.storage.sync.set({
+        customAgentName: newAgentName,
+        wakeWordEnabled: wakeWordEnabled
+      });
+      
+      setCustomAgentName(newAgentName);
+      
+      // Update offscreen document
+      chrome.runtime.sendMessage({
+        action: 'updateAgentName',
+        agentName: newAgentName
+      });
+      
+      showToast('Settings saved successfully!', 'success');
+      setViewState('COMMAND');
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+      showToast('Failed to save settings', 'error');
+    }
+  };
+  
+  // Toggle wake word detection
+  const toggleWakeWord = async () => {
+    const newState = !wakeWordEnabled;
+    setWakeWordEnabled(newState);
+    
+    try {
+      await chrome.storage.sync.set({ wakeWordEnabled: newState });
+      
+      if (newState) {
+        chrome.runtime.sendMessage({ action: 'startWakeWord' });
+        showToast('Wake word detection enabled', 'success');
+      } else {
+        chrome.runtime.sendMessage({ action: 'stopWakeWord' });
+        showToast('Wake word detection disabled', 'success');
+      }
+    } catch (error) {
+      console.error('Failed to toggle wake word:', error);
+      showToast('Failed to toggle wake word', 'error');
+    }
+  };
 
   const initializeCommandRecognition = () => {
+    // Prevent double initialization
+    if (commandRecognitionRef.current) {
+      console.log('Command recognition already initialized');
+      return;
+    }
+    
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       commandRecognitionRef.current = new SpeechRecognition();
@@ -96,6 +241,7 @@ function App() {
       commandRecognitionRef.current.onend = () => {
         console.log('Command recognition ended');
         setIsCommandListening(false);
+        setCommandTranscript('');
       };
     } else {
       console.warn('Speech recognition not supported');
@@ -103,6 +249,12 @@ function App() {
   };
 
   const initializeChatRecognition = () => {
+    // Prevent double initialization
+    if (chatRecognitionRef.current) {
+      console.log('Chat recognition already initialized');
+      return;
+    }
+    
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       chatRecognitionRef.current = new SpeechRecognition();
@@ -149,6 +301,7 @@ function App() {
       chatRecognitionRef.current.onend = () => {
         console.log('Chat recognition ended');
         setIsChatListening(false);
+        setChatTranscript('');
       };
     } else {
       console.warn('Speech recognition not supported');
@@ -157,38 +310,70 @@ function App() {
 
   const toggleCommandListening = () => {
     if (isCommandListening) {
-      commandRecognitionRef.current?.stop();
-      setIsCommandListening(false);
+      try {
+        commandRecognitionRef.current?.stop();
+        setIsCommandListening(false);
+      } catch (error) {
+        console.error('Failed to stop command recognition:', error);
+        setIsCommandListening(false);
+      }
     } else {
       try {
         stopSpeaking();
         setCommandTranscript('');
         setResponse('');
         setShouldSpeakResponse(true);
-        commandRecognitionRef.current?.start();
+        
+        // Check if already running before starting
+        if (!isCommandListening && commandRecognitionRef.current) {
+          commandRecognitionRef.current.start();
+          setIsCommandListening(true);
+        }
       } catch (error) {
         console.error('Failed to start command recognition:', error);
-        setResponse('❌ Failed to start voice input. Please check microphone permissions.');
-        setIsCommandListening(false);
+        
+        // If error is "already started", just update the state
+        if (error.message && error.message.includes('already started')) {
+          setIsCommandListening(true);
+        } else {
+          setResponse('❌ Failed to start voice input. Please check microphone permissions.');
+          setIsCommandListening(false);
+        }
       }
     }
   };
 
   const toggleChatListening = () => {
     if (isChatListening) {
-      chatRecognitionRef.current?.stop();
-      setIsChatListening(false);
+      try {
+        chatRecognitionRef.current?.stop();
+        setIsChatListening(false);
+      } catch (error) {
+        console.error('Failed to stop chat recognition:', error);
+        setIsChatListening(false);
+      }
     } else {
       try {
         stopSpeaking();
         setChatTranscript('');
         setResponse('');
         setShouldSpeakResponse(true);
-        chatRecognitionRef.current?.start();
+        
+        // Check if already running before starting
+        if (!isChatListening && chatRecognitionRef.current) {
+          chatRecognitionRef.current.start();
+          setIsChatListening(true);
+        }
       } catch (error) {
         console.error('Failed to start chat recognition:', error);
-        setResponse('❌ Failed to start voice input. Please check microphone permissions.');
-        setIsChatListening(false);
+        
+        // If error is "already started", just update the state
+        if (error.message && error.message.includes('already started')) {
+          setIsChatListening(true);
+        } else {
+          setResponse('❌ Failed to start voice input. Please check microphone permissions.');
+          setIsChatListening(false);
+        }
       }
     }
   };
@@ -240,6 +425,13 @@ function App() {
       // 3) Auto-focus the chat input (handled by useEffect)
       setResponse('');
       showToast('Screenshot captured! Ready to chat.', 'success');
+      
+      // Log activity
+      await logActivity('capture_screenshot', {
+        url: tab.url,
+        title: tab.title,
+        mode: 'single'
+      });
     } catch (error) {
       console.error('Capture failed:', error);
       showToast('Failed to capture screen', 'error');
@@ -333,6 +525,13 @@ function App() {
         if (shouldSpeakResponse) {
           speakResponse(data.response);
         }
+        
+        // Log activity
+        await logActivity('analyze_screen', {
+          prompt: chatInput,
+          imageCount: imagesToAnalyze.length,
+          response: data.response.substring(0, 200)
+        });
       } else {
         setResponse(data.message || 'Failed to analyze');
       }
@@ -395,6 +594,14 @@ function App() {
           if (shouldSpeakResponse) {
             speakResponse(result.message);
           }
+          
+          // Log activity
+          await logActivity('execute_command', {
+            command: commandInput,
+            function: functionName,
+            args: functionArgs,
+            result: result.message
+          });
           
           // Clear command input after successful execution
           setCommandInput('');
@@ -542,9 +749,57 @@ function App() {
     }
   };
 
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white p-4 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-xl mb-2">⏳ Loading...</p>
+          <p className="text-sm text-gray-400">Checking authentication</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Show auth screen if not logged in
+  if (!user) {
+    return <Auth onAuthSuccess={handleAuthSuccess} />;
+  }
+  
+  // Show history if requested
+  if (showHistory) {
+    return <History user={user} onClose={() => setShowHistory(false)} />;
+  }
+  
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4">
-      <h1 className="text-2xl font-bold mb-4">Ask About This Screen</h1>
+      {/* Header with Settings Icon */}
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Ask About This Screen</h1>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowHistory(true)}
+            className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition"
+            title="History"
+          >
+            📜
+          </button>
+          <button
+            onClick={() => setViewState(viewState === 'SETTINGS' ? 'COMMAND' : 'SETTINGS')}
+            className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition"
+            title="Settings"
+          >
+            ⚙️
+          </button>
+          <button
+            onClick={handleLogout}
+            className="p-2 bg-red-800 hover:bg-red-700 rounded-lg transition"
+            title="Logout"
+          >
+            🚪
+          </button>
+        </div>
+      </div>
       
       {/* Toast Notification */}
       {toast && (
@@ -555,25 +810,27 @@ function App() {
         </div>
       )}
       
-      {/* ViewState Toggle */}
-      <div className="flex gap-2 mb-4">
-        <button
-          onClick={() => setViewState('COMMAND')}
-          className={`flex-1 py-2 px-4 rounded-lg font-semibold transition ${
-            viewState === 'COMMAND' ? 'bg-orange-600' : 'bg-gray-700 hover:bg-gray-600'
-          }`}
-        >
-          🎮 Command Mode
-        </button>
-        <button
-          onClick={() => setViewState('CHAT')}
-          className={`flex-1 py-2 px-4 rounded-lg font-semibold transition ${
-            viewState === 'CHAT' ? 'bg-green-600' : 'bg-gray-700 hover:bg-gray-600'
-          }`}
-        >
-          💬 Chat Mode
-        </button>
-      </div>
+      {/* ViewState Toggle - Hide in Settings */}
+      {viewState !== 'SETTINGS' && (
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={() => setViewState('COMMAND')}
+            className={`flex-1 py-2 px-4 rounded-lg font-semibold transition ${
+              viewState === 'COMMAND' ? 'bg-orange-600' : 'bg-gray-700 hover:bg-gray-600'
+            }`}
+          >
+            🎮 Command Mode
+          </button>
+          <button
+            onClick={() => setViewState('CHAT')}
+            className={`flex-1 py-2 px-4 rounded-lg font-semibold transition ${
+              viewState === 'CHAT' ? 'bg-green-600' : 'bg-gray-700 hover:bg-gray-600'
+            }`}
+          >
+            💬 Chat Mode
+          </button>
+        </div>
+      )}
 
       {/* ============================================ */}
       {/* COMMAND MODE VIEW */}
@@ -841,6 +1098,111 @@ function App() {
           <button
             onClick={() => setViewState('COMMAND')}
             className="w-full mt-4 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition"
+          >
+            ← Back to Command Mode
+          </button>
+        </>
+      )}
+
+      {/* ============================================ */}
+      {/* SETTINGS VIEW */}
+      {/* ============================================ */}
+      {viewState === 'SETTINGS' && (
+        <>
+          <div className="mb-4 p-4 bg-blue-900 bg-opacity-30 border border-blue-700 rounded-lg">
+            <h2 className="text-lg font-semibold mb-2">⚙️ Settings</h2>
+            <p className="text-sm text-gray-300">
+              Configure wake word detection and agent name.
+            </p>
+          </div>
+
+          {/* Wake Word Settings */}
+          <div className="mb-4 p-4 bg-gray-800 border border-gray-700 rounded-lg">
+            <h3 className="text-md font-semibold mb-3">🎙️ Wake Word Detection</h3>
+            
+            {/* Enable/Disable Toggle */}
+            <div className="flex items-center justify-between mb-4 p-3 bg-gray-700 rounded-lg">
+              <div>
+                <p className="font-semibold">Enable Wake Word</p>
+                <p className="text-sm text-gray-400">
+                  Listen for "{customAgentName} wake up" to open panel
+                </p>
+              </div>
+              <button
+                onClick={toggleWakeWord}
+                className={`px-4 py-2 rounded-lg font-semibold transition ${
+                  wakeWordEnabled 
+                    ? 'bg-green-600 hover:bg-green-700' 
+                    : 'bg-gray-600 hover:bg-gray-500'
+                }`}
+              >
+                {wakeWordEnabled ? 'ON' : 'OFF'}
+              </button>
+            </div>
+
+            {/* Status Indicator */}
+            <div className="mb-4 p-3 bg-gray-700 rounded-lg">
+              <p className="text-sm font-semibold mb-1">Status:</p>
+              <div className="flex items-center gap-2">
+                <span className={`w-3 h-3 rounded-full ${
+                  wakeWordStatus === 'listening' ? 'bg-green-500 animate-pulse' :
+                  wakeWordStatus === 'error' ? 'bg-red-500' :
+                  wakeWordStatus === 'stopped' ? 'bg-gray-500' :
+                  'bg-yellow-500'
+                }`}></span>
+                <span className="text-sm text-gray-300 capitalize">{wakeWordStatus}</span>
+              </div>
+            </div>
+
+            {/* Custom Agent Name */}
+            <div className="mb-4">
+              <label className="block text-sm font-semibold mb-2">
+                Custom Agent Name
+              </label>
+              <input
+                type="text"
+                value={settingsInput}
+                onChange={(e) => setSettingsInput(e.target.value)}
+                placeholder="e.g., assistant, jarvis, alexa"
+                className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-gray-400 mt-2">
+                Say "{settingsInput || 'assistant'} wake up" to open the panel
+              </p>
+              <p className="text-xs text-gray-400">
+                Say "{settingsInput || 'assistant'} sleep" to close the panel
+              </p>
+            </div>
+
+            {/* Wake Word Examples */}
+            <div className="p-3 bg-gray-700 rounded-lg">
+              <p className="text-sm font-semibold mb-2">Wake Commands:</p>
+              <ul className="text-sm text-gray-400 space-y-1">
+                <li>• "{customAgentName} wake up"</li>
+                <li>• "Hey {customAgentName}"</li>
+                <li>• "{customAgentName} wake"</li>
+              </ul>
+              <p className="text-sm font-semibold mb-2 mt-3">Sleep Commands:</p>
+              <ul className="text-sm text-gray-400 space-y-1">
+                <li>• "{customAgentName} sleep"</li>
+                <li>• "{customAgentName} go to sleep"</li>
+                <li>• "Goodbye {customAgentName}"</li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Save Button */}
+          <button
+            onClick={saveSettings}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg mb-4 transition"
+          >
+            💾 Save Settings
+          </button>
+
+          {/* Back Button */}
+          <button
+            onClick={() => setViewState('COMMAND')}
+            className="w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition"
           >
             ← Back to Command Mode
           </button>

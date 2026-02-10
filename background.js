@@ -1,5 +1,85 @@
 // Maintain session screenshots across the extension
 let sessionScreenshots = [];
+let offscreenDocumentCreated = false;
+
+// Create offscreen document for wake word detection
+async function createOffscreenDocument() {
+  // Check if offscreen document already exists
+  const existingContexts = await chrome.runtime.getContexts({
+    contextTypes: ['OFFSCREEN_DOCUMENT']
+  });
+  
+  if (existingContexts.length > 0) {
+    console.log('[Background] Offscreen document already exists');
+    offscreenDocumentCreated = true;
+    return;
+  }
+  
+  if (offscreenDocumentCreated) {
+    return;
+  }
+  
+  try {
+    await chrome.offscreen.createDocument({
+      url: 'offscreen.html',
+      reasons: ['USER_MEDIA'],
+      justification: 'Continuous wake word detection using speech recognition'
+    });
+    offscreenDocumentCreated = true;
+    console.log('[Background] Offscreen document created');
+  } catch (error) {
+    console.error('[Background] Failed to create offscreen document:', error);
+    // If error is about document already existing, mark as created
+    if (error.message.includes('Only a single offscreen document')) {
+      offscreenDocumentCreated = true;
+    }
+  }
+}
+
+// Close offscreen document
+async function closeOffscreenDocument() {
+  if (!offscreenDocumentCreated) {
+    return;
+  }
+  
+  try {
+    // Check if offscreen document exists before closing
+    const existingContexts = await chrome.runtime.getContexts({
+      contextTypes: ['OFFSCREEN_DOCUMENT']
+    });
+    
+    if (existingContexts.length === 0) {
+      console.log('[Background] No offscreen document to close');
+      offscreenDocumentCreated = false;
+      return;
+    }
+    
+    await chrome.offscreen.closeDocument();
+    offscreenDocumentCreated = false;
+    console.log('[Background] Offscreen document closed');
+  } catch (error) {
+    console.error('[Background] Failed to close offscreen document:', error);
+    offscreenDocumentCreated = false;
+  }
+}
+
+// Initialize offscreen document on startup
+chrome.runtime.onStartup.addListener(async () => {
+  console.log('[Background] Extension started');
+  const result = await chrome.storage.sync.get(['wakeWordEnabled']);
+  if (result.wakeWordEnabled !== false) {
+    await createOffscreenDocument();
+  }
+});
+
+// Also create on install
+chrome.runtime.onInstalled.addListener(async () => {
+  console.log('[Background] Extension installed');
+  const result = await chrome.storage.sync.get(['wakeWordEnabled']);
+  if (result.wakeWordEnabled !== false) {
+    await createOffscreenDocument();
+  }
+});
 
 chrome.action.onClicked.addListener((tab) => {
   chrome.sidePanel.open({ windowId: tab.windowId });
@@ -104,6 +184,93 @@ async function captureScreen() {
 
 // Listen for messages from the side panel
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  // Handle wake word detection from offscreen document
+  if (request.action === 'wakeWordDetected') {
+    console.log('[Background] Wake word detected:', request.command);
+    
+    if (request.command === 'wake') {
+      // Open side panel
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs[0]) {
+          chrome.sidePanel.open({ windowId: tabs[0].windowId });
+          
+          // Show visual feedback on extension icon
+          chrome.action.setBadgeText({ text: '👂' });
+          chrome.action.setBadgeBackgroundColor({ color: '#4CAF50' });
+          
+          // Clear badge after 2 seconds
+          setTimeout(() => {
+            chrome.action.setBadgeText({ text: '' });
+          }, 2000);
+        }
+      });
+      
+      sendResponse({ success: true });
+    }
+    
+    if (request.command === 'sleep') {
+      // Close side panel
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs[0]) {
+          chrome.sidePanel.close({ windowId: tabs[0].windowId });
+          
+          // Show visual feedback
+          chrome.action.setBadgeText({ text: '💤' });
+          chrome.action.setBadgeBackgroundColor({ color: '#FF9800' });
+          
+          // Clear badge after 2 seconds
+          setTimeout(() => {
+            chrome.action.setBadgeText({ text: '' });
+          }, 2000);
+        }
+      });
+      
+      sendResponse({ success: true });
+    }
+    
+    return true;
+  }
+  
+  // Handle wake word status updates
+  if (request.action === 'wakeWordStatus') {
+    console.log('[Background] Wake word status:', request.status);
+    
+    // Broadcast status to side panel if open
+    chrome.runtime.sendMessage({
+      action: 'wakeWordStatusUpdate',
+      status: request.status,
+      error: request.error
+    }).catch(() => {
+      // Side panel might not be open, ignore error
+    });
+    
+    return true;
+  }
+  
+  // Handle wake word control from side panel
+  if (request.action === 'startWakeWord') {
+    createOffscreenDocument().then(() => {
+      chrome.runtime.sendMessage({ action: 'startWakeWordDetection' });
+      sendResponse({ success: true });
+    });
+    return true;
+  }
+  
+  if (request.action === 'stopWakeWord') {
+    chrome.runtime.sendMessage({ action: 'stopWakeWordDetection' });
+    sendResponse({ success: true });
+    return true;
+  }
+  
+  if (request.action === 'updateAgentName') {
+    chrome.runtime.sendMessage({ 
+      action: 'updateAgentName',
+      agentName: request.agentName
+    });
+    sendResponse({ success: true });
+    return true;
+  }
+  
   // Handle dynamic command execution
   if (request.action === 'executeDynamicCommand') {
     executeDynamicCommand(request.command).then(result => {

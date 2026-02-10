@@ -8,6 +8,13 @@ A powerful Chrome extension that captures screenshots and uses **local AI** (Oll
 
 ## ✨ Features
 
+### 🎙️ Wake Word Detection (NEW!)
+- **Custom Agent Name**: Set your own wake word (e.g., "jarvis", "alexa")
+- **Hands-Free Control**: Say "{agent_name} wake up" to open panel
+- **Sleep Command**: Say "{agent_name} sleep" to close panel
+- **Visual Feedback**: Badge icons show wake/sleep detection
+- **Settings UI**: Configure wake word in settings panel
+
 ### 🎮 Command Mode
 - 🎙️ **Voice Commands**: Control browser with natural language
 - 📸 **Screenshot Capture**: Single or multi-tab capture
@@ -66,6 +73,14 @@ python -m uvicorn main:app --reload
 ---
 
 ## 🎯 Usage Examples
+
+### Wake Word Commands (NEW!)
+```
+🎙️ "Assistant wake up"      → Opens side panel (hands-free)
+🎙️ "Hey assistant"          → Opens side panel
+🎙️ "Assistant sleep"        → Closes side panel
+🎙️ "Goodbye assistant"      → Closes side panel
+```
 
 ### Voice Commands
 ```
@@ -283,8 +298,10 @@ See `QUICK_START.md` for detailed troubleshooting.
 ✅ **Ollama**: Connected with gemma3:4b  
 ✅ **Model**: Loaded and ready  
 ✅ **Extension**: Built and ready to load  
+✅ **Wake Word**: Custom wake word detection enabled  
 ✅ **Tests**: All passing  
 ✅ **Documentation**: Complete  
+✅ **Version**: 1.1.0  
 
 **Status**: Fully operational! 🎉
 
